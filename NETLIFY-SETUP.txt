@@ -1,0 +1,58 @@
+MLBM — SETUP GUIDE
+==================
+
+The inquiry form saves every submission to a Google Sheet and emails it to
+melody@mlbmrep.com. Visitors only see the Thank You page; they receive no email.
+
+Do Part A once, then Part B (deploy). Takes about 10 minutes.
+
+
+PART A — CONNECT THE GOOGLE SHEET (one time)
+--------------------------------------------
+Sign in to the Google account that should own the sheet (ideally Melody's).
+
+1. Go to https://sheets.new and name the sheet "MLBM Inquiries".
+2. In the sheet: Extensions > Apps Script.
+3. Delete everything in Code.gs, paste in the contents of mlbm-form-backend.gs,
+   and click Save.
+4. In the function dropdown at the top choose "setup", then click Run.
+   Google will ask for permission: Review permissions > choose the account >
+   Advanced > Go to project (unsafe) > Allow.
+   (This is your own script asking to edit this sheet and send email.)
+   An "Inquiries" tab with column headers now appears in the sheet.
+5. Optional: choose "sendTestEmail" and click Run to confirm Melody receives it.
+6. Click Deploy > New deployment. Click the gear > Web app.
+     Description:     MLBM form
+     Execute as:      Me
+     Who has access:  Anyone
+   Click Deploy and copy the Web app URL (ends in /exec).
+7. Open index.html in a text editor, find:
+     PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE
+   and replace it with the URL you copied. Save.
+
+
+PART B — DEPLOY TO NETLIFY
+--------------------------
+1. Zip the site folder again (index.html must be at the top level of the ZIP)
+   or drag the folder itself onto https://app.netlify.com/drop
+2. Open the live site, submit the form once, and confirm:
+     - you land on the Thank You page
+     - a new row appears in the Inquiries tab
+     - melody@mlbmrep.com receives the email (reply goes straight to the visitor)
+
+
+GOOD TO KNOW
+------------
+- If you edit the Apps Script later: Deploy > Manage deployments > pencil icon >
+  Version: New version > Deploy. This keeps the same URL.
+  (Creating a brand-new deployment gives a new URL, which must go into index.html.)
+- Google's daily email limit is about 100 for a free Gmail account and
+  1,500 for Google Workspace. Rows are still saved if the limit is reached.
+- The emails come from the Google account that owns the script.
+- A hidden spam trap discards most bot submissions automatically.
+- 404.html is picked up by Netlify automatically for any missing page.
+- Styles and scripts are versioned (?v=3). Netlify caches /assets/ for a year,
+  so bump the number in every .html file whenever styles.css or site.js changes.
+
+Pages: Home, Capabilities, Embedded Brand Growth Partnerships, Roster,
+Privacy Notice, Service Terms, Thank You, 404.
