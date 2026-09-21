@@ -24,47 +24,59 @@
   const form = d.querySelector('#inquiry-form');
   if (form) {
     const btn = form.querySelector('button[type="submit"]');
+    const label = btn && btn.querySelector('.btn-label');
     const status = form.querySelector('.form-status');
-    const label = btn && [...btn.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
     const original = label ? label.textContent : '';
     const endpoint = form.getAttribute('action') || '';
     const thankYou = form.dataset.thankYou || 'thank-you.html';
     const connected = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(endpoint);
+    const fields = () => form.querySelectorAll('input, select, textarea');
+    const wait = ms => new Promise(r => setTimeout(r, ms));
 
-    const setBusy = busy => {
-      if (!btn) return;
-      btn.classList.toggle('is-sending', busy);
-      btn.toggleAttribute('aria-busy', busy);
-      if (label) label.textContent = busy ? 'Sending your inquiry ' : original;
+    const setState = state => {
+      form.dataset.state = state;
+      const busy = state === 'sending' || state === 'sent';
+      if (btn) {
+        btn.disabled = busy;
+        btn.classList.toggle('is-sending', state === 'sending');
+        btn.classList.toggle('is-sent', state === 'sent');
+        btn.setAttribute('aria-busy', String(state === 'sending'));
+      }
+      if (label) label.textContent = state === 'sending' ? 'Sending your inquiry…' : state === 'sent' ? 'Inquiry sent' : original;
+      form.classList.toggle('is-busy', busy);
+      fields().forEach(f => { if (f.type !== 'hidden') f.readOnly = busy; });
     };
-    const say = html => { if (status) status.innerHTML = html; };
+    const say = (html, tone) => { if (!status) return; status.innerHTML = html; status.dataset.tone = tone || ''; };
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      if (form.dataset.busy) return;
-      if (!connected) {
-        say('This form isn’t connected yet. Please email <a href="mailto:Melody@mlbmrep.com">Melody@mlbmrep.com</a> directly.');
-        return;
-      }
-      form.dataset.busy = '1';
-      say('');
-      setBusy(true);
+      if (form.dataset.state === 'sending' || form.dataset.state === 'sent') return;
+      if (!connected) { say('This form isn’t connected yet. Please email <a href="mailto:Melody@mlbmrep.com">Melody@mlbmrep.com</a> directly.', 'error'); return; }
+
       const body = new URLSearchParams(new FormData(form));
       body.append('page', location.href.split('#')[0]);
+      setState('sending');
+      say('Submitting your inquiry — this takes a few seconds. Please keep this page open.');
+
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 25000);
+      const timer = setTimeout(() => ctrl.abort(), 30000);
       try {
-        await fetch(endpoint, { method: 'POST', mode: 'no-cors', body, signal: ctrl.signal });
+        await Promise.all([
+          fetch(endpoint, { method: 'POST', mode: 'no-cors', body, signal: ctrl.signal }),
+          wait(900) // keep the loading state visible even on very fast connections
+        ]);
         clearTimeout(timer);
+        setState('sent');
+        say('Inquiry received. Taking you to the confirmation page…');
+        await wait(500);
         location.href = thankYou;
       } catch (err) {
         clearTimeout(timer);
-        delete form.dataset.busy;
-        setBusy(false);
-        say('Your inquiry didn’t send. Check your connection and try again, or email <a href="mailto:Melody@mlbmrep.com">Melody@mlbmrep.com</a>.');
+        setState('idle');
+        say('Your inquiry didn’t send. Check your connection and try again, or email <a href="mailto:Melody@mlbmrep.com">Melody@mlbmrep.com</a>.', 'error');
       }
     });
-    addEventListener('pageshow', () => { delete form.dataset.busy; setBusy(false); });
+    addEventListener('pageshow', () => { setState('idle'); say(''); });
   }
 
   /* ---------- Headings: split into masked words ---------- */
@@ -95,7 +107,7 @@
   const heads = [...d.querySelectorAll('h1, h2')];
   const animatedHeads = [];
   heads.forEach(h => {
-    if (!reduce && !h.closest('.legal-content')) { splitWords(h); animatedHeads.push(h); }
+    if (!reduce) { splitWords(h); animatedHeads.push(h); }
     h.classList.add('is-split');
   });
 
